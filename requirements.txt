@@ -1,0 +1,13 @@
+numpy
+opencv-python
+got10k
+cupy-cuda101
+mxnet-cu101
+numba
+scipy
+h5py
+colorama
+Cython
+tqdm
+Pillow
+pandas
