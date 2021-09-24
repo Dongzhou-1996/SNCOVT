@@ -18,8 +18,8 @@ author = {Dong Zhou and Guanghui Sun and Jialin Song and Weiran Yao}
 ```
 
 # Dataset Download
-![dataset](https://github.com/Dongzhou-1996/SNCOVT/blob/main/SNCOVT_Dataset.bmp)
-Note that: Training set of SNCOVT included 20 binocular video sequences is totally public, while the annotations of test set still be preserved.
+![dataset](./SNCOVT_Dataset.bmp)
+Note that: Training set of SNCOVT included 20 binocular video sequences is totally public, while test set is still preserved.
 - Baidu Netdisk: *available soon* ...
 - Google Drive: *available soon* ...
 
@@ -80,6 +80,10 @@ $: python setup.py build_ext --inplace
 ```
 
 The other trackers to be adopted in our monocular or binocular evaluation algorithm, should wrapper two methods `tracker.init()` & `tracker.update()`.
+
+Pre-trained SiamRPN models:
+- [Baidu Netdisk](https://pan.baidu.com/s/1k-J63jnTktWB-qB4fpm_HQ) (code: 1111)
+- [Google Drive](https://drive.google.com/drive/folders/1zUIb3-V3Ao5xgeCU9945Bd_E06nXLE91?usp=sharing)
 
 # Monocular evaluation
 To evaluate diverse monocular tracking method mentioned above, we create a new class `MonoTracker` to re-wrap them. It mainly consits of three method `MonoTracker.__init()__`, `MonoTracker.init()`, and `MonoTracker.update()`. You can simply evaluate those trackers on our SNCOVT dataset as follows:

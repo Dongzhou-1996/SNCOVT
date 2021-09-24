@@ -2,6 +2,7 @@ import os
 import numpy as np
 import glob
 import cv2
+import imageio
 import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import pandas as pd
@@ -84,18 +85,23 @@ class SNCOVT(object):
         for s, seq_dir in enumerate(subset_sequence_dirs):
             print('=> start to display sequence {:04d}, in {} subset'.format(s + 1, subset))
 
-            annotation_file = os.path.join(seq_dir, 'annotations.csv')
-            df = pd.read_csv(annotation_file, index_col=False)
-            seq_len = len(df)
+            check_file = os.path.join(seq_dir, 'check_file.txt')
+            frames = np.loadtxt(check_file, delimiter='\n').astype(np.int)
+            seq_len = len(frames)
             print('=> This sequence contain {} frames'.format(seq_len))
 
-            video_output_path = os.path.join(seq_dir, '{:04d}.avi'.format(s+1))
-            width, height = eval(self.meta['resolution'])
-            out_video = cv2.VideoWriter(video_output_path, cv2.VideoWriter_fourcc(*'MJPG'),
-                                        30, (width * 2, height), True)
+            if subset == 'train':
+                annotation_file = os.path.join(seq_dir, 'annotations.csv')
+                df = pd.read_csv(annotation_file, index_col=False)
 
-            for i, frame in enumerate(df.loc[:, 'frame']):
-                print('=> frame: {}/{}'.format(i + 1, seq_len))
+            video_output_path = os.path.join(seq_dir, '{:04d}.gif'.format(s+1))
+            # width, height = eval(self.meta['resolution'])
+            # out_video = cv2.VideoWriter(video_output_path, cv2.VideoWriter_fourcc(*'MJPG'),
+            #                               30, (width * 2, height), True)
+
+            video = []
+            for i, frame in enumerate(frames):
+                print('=> frame: {}/{}, sequence {:04d}'.format(i + 1, seq_len, s+1))
                 left_image_path = os.path.join(seq_dir, 'img', 'left', '{:06d}.jpg'.format(frame))
                 right_image_path = os.path.join(seq_dir, 'img', 'right', '{:06d}.jpg'.format(frame))
                 if not os.path.exists(left_image_path) or not os.path.exists(right_image_path):
@@ -103,45 +109,50 @@ class SNCOVT(object):
                     exit(1)
 
                 # load bino-image
-                left_img = cv2.imread(left_image_path, 1)
-                right_img = cv2.imread(right_image_path, 1)
+                left_img = imageio.imread(left_image_path)
+                right_img = imageio.imread(right_image_path)
                 print('=> successfully load binocular image')
 
                 # load annotations
-                left_roi = eval(df.loc[i, 'left roi'])
-                right_roi = eval(df.loc[i, 'right roi'])
-                truncation = int(df.loc[i, 'truncation'])
-                if truncation <= 2:
-                    print('left roi: {}'.format(left_roi))
-                    print('right roi: {}'.format(right_roi))
-                    cv2.rectangle(left_img, pt1=(left_roi[0], left_roi[1]),
-                                  pt2=(left_roi[0] + left_roi[2], left_roi[1] + left_roi[3]), color=(255, 255, 0),
-                                  thickness=2)
-                    cv2.rectangle(right_img, pt1=(right_roi[0], right_roi[1]),
-                                  pt2=(right_roi[0] + right_roi[2], right_roi[1] + right_roi[3]), color=(255, 255, 0),
-                                  thickness=2)
-                else:
-                    print('=> no 2D annotations in this frame!')
+                if subset == 'train':
+                    left_roi = eval(df.loc[i, 'left roi'])
+                    right_roi = eval(df.loc[i, 'right roi'])
+                    truncation = int(df.loc[i, 'truncation'])
+                    if truncation <= 2:
+                        print('left roi: {}'.format(left_roi))
+                        print('right roi: {}'.format(right_roi))
+                        cv2.rectangle(left_img, pt1=(left_roi[0], left_roi[1]),
+                                      pt2=(left_roi[0] + left_roi[2], left_roi[1] + left_roi[3]), color=(255, 255, 0),
+                                      thickness=4)
+                        cv2.rectangle(right_img, pt1=(right_roi[0], right_roi[1]),
+                                      pt2=(right_roi[0] + right_roi[2], right_roi[1] + right_roi[3]), color=(255, 255, 0),
+                                      thickness=4)
+                    else:
+                        print('=> no 2D annotations in this frame!')
 
                 display_img = np.hstack((left_img, right_img))
+                display_img = cv2.resize(display_img, (640, 256))
+                display_img = cv2.cvtColor(display_img, cv2.COLOR_BGR2RGB)
+                # if restore:
+                #     out_video.write(display_img)
+                video.append(display_img)
                 cv2.namedWindow('image display', cv2.WINDOW_GUI_EXPANDED)
                 cv2.imshow('image display', display_img)
-                if restore:
-                    out_video.write(display_img)
+
                 key = cv2.waitKey(1)
 
-                if key == ord('n'):
-                    print('=> key interrupted! skip to display next sequence')
-                    out_video.release()
-                    break
-                elif key == 27:
-                    print('=> key interrupted! stop displaying ...')
-                    out_video.release()
-                    exit(1)
-                else:
-                    print('=> normal displaying ...')
-
-            out_video.release()
+                # if key == ord('n'):
+                #     print('=> key interrupted! skip to display next sequence')
+                #     out_video.release()
+                #     break
+                # elif key == 27:
+                #     print('=> key interrupted! stop displaying ...')
+                #     out_video.release()
+                #     exit(1)
+            if restore:
+                print('=> saving video file in {} ...'.format(video_output_path))
+                imageio.mimsave(video_output_path, video, 'GIF', duration=0.04)
+            # out_video.release()
 
     def integrity_check(self, thread_nums=9):
         integrity_flag = True
@@ -178,7 +189,7 @@ class SNCOVT(object):
         Returns:
             single_sequence: SingleSeq class, contains left and right images and corresponding annotations
         """
-        single_sequence = SingleSeq(self.sequence_dirs[index])
+        single_sequence = SingleSeq(self.sequence_dirs[index], subset=self.subset)
 
         return single_sequence
 
@@ -188,7 +199,7 @@ class SNCOVT(object):
 
 class SingleSeq(object):
 
-    def __init__(self, sequence_dir):
+    def __init__(self, sequence_dir, subset='train'):
         self.sequence_dir = sequence_dir
         if sys.platform == 'win32':
             self.name = sequence_dir.split('\\')[-1]
@@ -198,7 +209,7 @@ class SingleSeq(object):
             self.name = sequence_dir.split('/')[-1]
         else:
             raise ValueError('Unsupported platform!')
-
+        self.subset = subset
         self.init_pos = 0
 
         # load binocular images
@@ -207,20 +218,35 @@ class SingleSeq(object):
         self.right_img_dir = os.path.join(self.sequence_dir, 'img/right')
         self.right_img_files = sorted(glob.glob(os.path.join(self.right_img_dir, '*.jpg')))
 
-        # load 2d annotations
-        self.annotation2d_file = os.path.join(sequence_dir, 'annotations.csv')
-        self.data_frame = pd.read_csv(self.annotation2d_file)
-        self.left_annotation = np.array(self.data_frame['left roi'])
-        self.right_annotation = np.array(self.data_frame['right roi'])
-        self.truncation = np.array(self.data_frame['truncation'])
+        if subset == 'train':
+            # load 2d annotations
+            self.annotation2d_file = os.path.join(sequence_dir, 'annotations.csv')
+            self.data_frame = pd.read_csv(self.annotation2d_file)
+            self.left_annotation = np.array(self.data_frame['left roi'])
+            self.right_annotation = np.array(self.data_frame['right roi'])
+            self.truncation = np.array(self.data_frame['truncation'])
+        else:
+            self.annotation2d_file = os.path.join(sequence_dir, 'annotations.csv')
+            if os.path.exists(self.annotation2d_file):
+                os.remove(self.annotation2d_file)
+                print('=> deleted annotation file in sequence {}, subset {}'.format(self.name, self.subset))
+            self.left_annotation = None
+            self.right_annotation = None
+            self.truncation = None
         pass
 
     def __getitem__(self, index):
         left_img_file = self.left_img_files[index]
         right_img_file = self.right_img_files[index]
-        truncation = int(self.truncation[index])
-        left_roi = eval(self.left_annotation[index])
-        right_roi = eval(self.right_annotation[index])
+
+        if self.subset == 'train':
+            truncation = int(self.truncation[index])
+            left_roi = eval(self.left_annotation[index])
+            right_roi = eval(self.right_annotation[index])
+        else:
+            truncation = None
+            left_roi = None
+            right_roi = None
 
         return left_img_file, left_roi, right_img_file, right_roi, truncation
 
@@ -260,7 +286,8 @@ class SingleSeq(object):
             self.truncation = self.truncation[init_pos:]
 
     def integrity_check(self):
-        frames = np.array(self.data_frame['frame'])
+        check_file = os.path.join(self.sequence_dir, 'check_file.txt')
+        frames = np.loadtxt(check_file, delimiter='\n').astype(np.int)
         integrity_flag = True
         for frame in frames:
             # print('=> frame: {}, sequence: {}'.format(frame, self.name))
@@ -287,7 +314,8 @@ class SingleSeq(object):
 
 if __name__ == '__main__':
     sncovt = SNCOVT(args.dataset_dir, subset='train')
-    sncovt.integrity_check(5)
+    sncovt.dataset_display(subset='train', restore=True)
+    # sncovt.integrity_check(4)
 
     # SNCOVT dataset iterative exaples
     # repetition = 1
