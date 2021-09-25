@@ -25,19 +25,50 @@ author = {Dong Zhou and Guanghui Sun and Jialin Song and Weiran Yao}
 ![dataset](./SNCOVT_Dataset.bmp)
 
 **Note that: Training set of SNCOVT included 20 binocular video sequences is totally public, while test set is still preserved**.
-- Baidu Netdisk: *available soon* ...
-- Google Drive: *available soon* ...
+- Baidu Netdisk: | [train set](https://pan.baidu.com/s/1TIrKat8b-MZ5U5_47YuDWQ) | [test set without annos](https://pan.baidu.com/s/1RahbLCyFtQddDWMcGu186A) |
+- Google Drive: | [train set](https://drive.google.com/file/d/1oQDfy1dW4a4VZFxiNO8lFavoLqnUklBT/view?usp=sharing) | [test set without annos](https://drive.google.com/file/d/1a-UbxhbrrQBPdJhZJtUnMYPxyxeMxmFL/view?usp=sharing) |
 
-Once download our SNCOVT dataset, please run following commands to check the integrity of dataset with multi-threads:
+Once download our SNCOVT dataset, please make dataset on your PC following this form:
+```
+Root_dir
+|
+|--train
+|   |
+|   |--sequence id {:04d}
+|          |--img
+|          |   |--left
+|          |   |   |--{:06d}.jpg
+|          |   |   ...
+|          |   |--right
+|          |       |--{:06d}.jpg
+|          |       ...
+|          |--annotations.csv
+|          |--check_file.txt
+|--test   
+|   |
+|   |--sequence id {:04d}
+|          |--img
+|          |   |--left
+|          |   |   |--{:06d}.jpg
+|          |   |   ...
+|          |   |--right
+|          |       |--{:06d}.jpg
+|          |       ...
+|          |-- check_file.txt   
+```
+
+And then, you'd better to run following commands to check the integrity of dataset with multi-threads:
 ```
 $: git clone https://github.com/Dongzhou-1996/SNCOVT.git
-$: cd {repository dir}
+$: cd SNCVOT
 $: python
 >>> from SNCOVT_Dataset import SNCOVT
 >>> sncovt = SNCOVT('{dataset_dir}', subset='train')
 >>> sncovt.integrity(thread_nums=4)
 ```
-if return `True`, the dataset is integral. Furhtermore, you can see all the binocular image with `SNCOVT.dataset_display()`, for example:
+if return `True`, the dataset is integral. 
+
+Furhtermore, you can see all the binocular image with `SNCOVT.dataset_display()`, for example:
 ```
 >>> from SNCOVT_Dataset import SNCOVT
 >>> sncovt = SNCOVT('{dataset_dir}', subset='train')
